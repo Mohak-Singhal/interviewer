@@ -5,3 +5,4 @@ supabase
 PyMuPDF
 httpx
 fastapi
+python-multipart
