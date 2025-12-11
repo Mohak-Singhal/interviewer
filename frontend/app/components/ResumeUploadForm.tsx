@@ -43,7 +43,7 @@ export function ResumeUploadForm() {
       }
 
       setUploadState("success");
-      setUploadMessage("Resume uploaded successfully. Personalized questions unlocked.");
+      setUploadMessage("Resume uploaded successfully.");
       setResumeFile(null);
     } catch (error) {
       setUploadState("error");

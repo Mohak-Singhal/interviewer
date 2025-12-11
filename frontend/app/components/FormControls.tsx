@@ -1,9 +1,10 @@
 type SelectInputProps = {
   label: string;
   placeholder: string;
+  children?: React.ReactNode;
 };
 
-export function SelectInput({ label, placeholder }: SelectInputProps) {
+export function SelectInput({ label, placeholder, children }: SelectInputProps) {
   return (
     <label className="flex flex-col gap-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm">
       {label}
@@ -11,6 +12,7 @@ export function SelectInput({ label, placeholder }: SelectInputProps) {
         <span>{placeholder}</span>
         <span className="text-lg text-slate-400">▾</span>
       </div>
+      {children}
     </label>
   );
 }
