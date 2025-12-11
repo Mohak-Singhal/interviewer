@@ -51,11 +51,11 @@ export function InterviewDetailsSection({
     setCameraStatus("requesting");
 
     try {
-      // 1. Check Auth (Optional safety, can remove if you allow public demos)
+      // 1. Check Auth (Safety check)
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
          // You might want to redirect to login here, or handle anonymous users
-         console.warn("User not logged in");
+         throw new Error("User must be logged in to start an interview.");
       }
 
       // 2. Request Permissions
@@ -63,34 +63,50 @@ export function InterviewDetailsSection({
         audio: true, 
         video: true 
       });
+      // Stop tracks immediately (we just needed to check permission)
       stream.getTracks().forEach(track => track.stop());
       setMicStatus("granted");
       setCameraStatus("granted");
       
-      // 3. Insert into Supabase
+      // 3. SEND DATA TO HOSTED BACKEND
       setStatus("connecting");
 
-      if (user) {
-        const { data, error } = await supabase
-          .from('interviews')
-          .insert({
-            user_id: user.id,
-            role: role,
-            job_type: jobType,
-            rounds: selectedRounds, 
-            job_description: jdText,
-            status: 'active'
-          })
-          .select()
-          .single();
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      
+      if (!backendUrl) {
+        throw new Error("Backend URL is not configured.");
+      }
 
-        if (error) throw error;
-        
-        // Redirect with ID
-        router.push(`/interview/${data.id}`); 
+      // Send POST request to your FastAPI backend
+      const response = await fetch(`${backendUrl}/api/create-session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Optional: Add Authorization header if your backend requires it
+          // 'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          user_id: user.id,
+          role: role,
+          job_type: jobType,
+          rounds: selectedRounds,
+          job_description: jdText || "", 
+          // resume_url: resumeUrl // Add this if/when you implement resume upload URL capture
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Failed to create session on server");
+      }
+
+      const result = await response.json();
+
+      // 4. Redirect using the ID returned by your Backend
+      if (result.interview_id) {
+        router.push(`/interview/${result.interview_id}`); 
       } else {
-        // Fallback for unauthenticated demo users (if allowed)
-        router.push(`/interview/demo`);
+        throw new Error("No interview ID returned from server.");
       }
 
     } catch (err: any) {
@@ -99,6 +115,9 @@ export function InterviewDetailsSection({
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
          setMicStatus("denied");
          setCameraStatus("denied");
+      } else {
+         // Show alert for other errors (like backend connection failure)
+         alert(`Error: ${err.message}`);
       }
       setStatus("input");
     }
@@ -264,7 +283,7 @@ export function InterviewDetailsSection({
 
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    <span>{status === "checking_devices" ? "Checking Devices..." : "Setting up..."}</span>
+                    <span>{status === "checking_devices" ? "Checking Devices..." : "Connecting to Server..."}</span>
                     <span>{status === "checking_devices" ? "30%" : "90%"}</span>
                   </div>
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
