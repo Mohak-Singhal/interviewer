@@ -9,7 +9,7 @@ import time
 
 from app.models.resume import ResumeParsed
 from app.db.database import supabase  
-from app.db.database import create_resume_data_table
+from app.db.database import create_tables
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -129,30 +129,33 @@ Extract into valid JSON:
 #  SAVE PARSED RESUME TO SUPABASE
 # --------------------------------------------------------------------------------------
 # Remove file_bytes if not needed
-async def save_resume_to_db(file_name: str, parsed: dict):
-    """
-    Inserts parsed resume data into Supabase PostgreSQL table `resume_data`.
-    """
-    try:
-        # Ensure the table exists (create it if it doesn't)
-        create_resume_data_table()
+async def save_resume_to_db(parsed: dict, user_id: str):
 
+    try:
         data = {
-            "name": parsed.get("name"),
-            "email": parsed.get("email"),
-            "phone": parsed.get("phone"),
-            "skills": parsed.get("skills") or [],
-            "education": parsed.get("education") or [],
-            "experience": parsed.get("experience") or [],
-            "projects": parsed.get("projects") or [],
-            "raw_text": parsed.get("raw_text")
+      "user_id": user_id,
+        "name": parsed.get("name"),
+        "email": parsed.get("email"),
+        "phone": parsed.get("phone"),
+        "skills": parsed.get("skills") or [],
+        "education": parsed.get("education") or [],
+        "experience": parsed.get("experience") or [],
+        "projects": parsed.get("projects") or [],
+        "raw_text": parsed.get("raw_text")
         }
 
-        # Insert into the 'resume_data' table in Supabase
         result = supabase.table("resume_data").insert(data).execute()
-
-        return result.data
+        if result.data and len(result.data) > 0:
+            saved_record = result.data[0]
+            resume_id = saved_record.get('id') 
+            # print(f"✅ Resume saved successfully. ID: {resume_id}")
+            
+            # Return the full record so you can use the ID in your API response
+            return saved_record
+            
+        else:
+            raise Exception("Insert successful but no data returned from Supabase.")
 
     except Exception as e:
-        logging.error(f"❌ Failed saving to database: {e}")
+        print(f"❌ Failed saving resume: {e}")
         return {"error": str(e)}

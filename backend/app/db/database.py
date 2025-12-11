@@ -17,6 +17,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 
 if not SUPABASE_URL or not SUPABASE_KEY:
+
     raise ValueError("Supabase credentials missing in .env")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -25,14 +26,22 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 #  CREATE THE RESUME_DATA TABLE IF IT DOESN'T EXIST
 # --------------------------------------------------------------------------------------
 
-def create_resume_data_table():
+def create_tables():
+    """Creates users and resume_data tables if they don't exist."""
+
+    users_sql = """
+    CREATE TABLE IF NOT EXISTS public.users (
+        id SERIAL PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        name TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+    );
     """
-    Create the 'resume_data' table if it does not already exist.
-    """
-    create_table_sql = """
+
+    resume_sql = """
     CREATE TABLE IF NOT EXISTS public.resume_data (
         id SERIAL PRIMARY KEY,
-        resume_filename TEXT,
+        user_id TEXT,
         name TEXT,
         email TEXT,
         phone TEXT,
@@ -40,18 +49,15 @@ def create_resume_data_table():
         education TEXT[] DEFAULT '{}',
         experience TEXT[] DEFAULT '{}',
         projects TEXT[] DEFAULT '{}',
-        raw_text TEXT
+        raw_text TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
     );
     """
 
+    # Execute SQL on Supabase
     try:
-        # Execute the raw SQL query using Supabase client
-        result = supabase.postgrest.from_("resume_data").upsert(create_table_sql).execute()
-
-        if result.error:
-            logging.error(f"Failed to create table: {result.error}")
-        else:
-            logging.info("Table 'resume_data' created successfully (if it didn't already exist).")
-
+        supabase.rpc("exec", {"query": users_sql})
+        supabase.rpc("exec", {"query": resume_sql})
+        print("✅ Tables created successfully!")
     except Exception as e:
-        logging.error(f"Error creating table: {e}")
+        print(f"❌ Error creating tables: {e}")

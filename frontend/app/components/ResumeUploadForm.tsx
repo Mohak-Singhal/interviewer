@@ -1,19 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import { supabase } from "../lib/supabaseClient";
 
 type UploadState = "idle" | "uploading" | "success" | "error";
 
-export function ResumeUploadForm() {
+interface ResumeUploadFormProps {
+  onUploadSuccess?: (id: string) => void;
+}
+
+export function ResumeUploadForm({ onUploadSuccess }: ResumeUploadFormProps) {
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setUploadMessage(null);
 
+    // 1. Validation
     if (!resumeFile) {
       setUploadState("error");
       setUploadMessage("Please choose a PDF resume before uploading.");
@@ -26,38 +33,58 @@ export function ResumeUploadForm() {
       return;
     }
 
+    // 2. Get User
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
+
+    if (!user?.id) {
+      setUploadState("error");
+      setUploadMessage("You must be logged in to upload a resume.");
+      return;
+    }
+
+    // 3. Prepare Data
     const formData = new FormData();
     formData.append("file", resumeFile);
+    formData.append("user_id", user.id);
 
     try {
       setUploadState("uploading");
-      const response = await fetch(
-        `${backendUrl}/resume/upload-resume`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      
+      const response = await fetch(`${backendUrl}/api/resume/upload-resume`, {
+        method: "POST",
+        body: formData,
+      });
 
-      if (!response.ok) {
-        throw new Error("Upload failed. Please try again.");
+      const data = await response.json();
+
+      if (!response.ok || data.status === "error") {
+        throw new Error(data.details?.error || "Upload failed. Please try again.");
       }
 
       setUploadState("success");
       setUploadMessage("Resume uploaded successfully.");
       setResumeFile(null);
+      
+      // 4. Pass the ID to Parent
+      if (onUploadSuccess && data.resume_id) {
+        onUploadSuccess(data.resume_id);
+      }
+      
     } catch (error) {
       setUploadState("error");
       setUploadMessage(
-        error instanceof Error
-          ? error.message
-          : "Something went wrong. Please retry."
+        error instanceof Error ? error.message : "Something went wrong. Please retry."
       );
     }
   };
 
   return (
-    <form className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 shadow-inner" onSubmit={handleSubmit} id="resume">
+    <form 
+      className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 shadow-inner" 
+      onSubmit={handleSubmit} 
+      id="resume"
+    >
       <p className="text-sm font-semibold text-slate-800">Upload Resume (PDF)</p>
       <div className="flex flex-col gap-3 rounded-xl border border-dashed border-slate-300 bg-white p-4">
         <input
@@ -95,5 +122,3 @@ export function ResumeUploadForm() {
     </form>
   );
 }
-
-

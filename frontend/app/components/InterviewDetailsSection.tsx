@@ -42,6 +42,9 @@ export function InterviewDetailsSection({
   const [micStatus, setMicStatus] = useState<DevicePermissionStatus>("idle");
   const [cameraStatus, setCameraStatus] = useState<DevicePermissionStatus>("idle");
   
+  // NEW: State to store the uploaded resume ID
+  const [resumeId, setResumeId] = useState<string | null>(null);
+
   const [status, setStatus] = useState<"input" | "checking_devices" | "connecting" | "ready">("input");
 
   // --- Handlers ---
@@ -54,7 +57,6 @@ export function InterviewDetailsSection({
       // 1. Check Auth (Safety check)
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-         // You might want to redirect to login here, or handle anonymous users
          throw new Error("User must be logged in to start an interview.");
       }
 
@@ -70,6 +72,7 @@ export function InterviewDetailsSection({
       
       // 3. SEND DATA TO HOSTED BACKEND
       setStatus("connecting");
+      console.log("resumeId:", resumeId, "jdText length:", jdText, "selectedRounds:", selectedRounds, "role:", role, "jobType:", jobType, "user ID:", user.id);
 
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
       
@@ -78,20 +81,18 @@ export function InterviewDetailsSection({
       }
 
       // Send POST request to your FastAPI backend
-      const response = await fetch(`${backendUrl}/api/create-session`, {
+      const response = await fetch(`${backendUrl}/api/interview/create-session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Optional: Add Authorization header if your backend requires it
-          // 'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           user_id: user.id,
           role: role,
           job_type: jobType,
           rounds: selectedRounds,
-          job_description: jdText || "", 
-          // resume_url: resumeUrl // Add this if/when you implement resume upload URL capture
+          job_description: jdText || "",
+          resume_id: resumeId, 
         }),
       });
 
@@ -213,9 +214,24 @@ export function InterviewDetailsSection({
                  (Optional)
                </span>
              </label>
+             
+             {/* Pass the function to capture the ID */}
              <div className={status !== "input" ? "pointer-events-none opacity-50" : ""}>
-               <ResumeUploadForm />
+               <ResumeUploadForm 
+                  onUploadSuccess={(id) => {
+                    console.log("Resume uploaded, ID:", id);
+                    setResumeId(id);
+                  }} 
+               />
              </div>
+
+             {/* Visual Confirmation that ID is linked */}
+             {resumeId && (
+               <div className="flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-xs font-medium text-green-700 border border-green-200">
+                 <CheckCircle2 className="h-3.5 w-3.5" />
+                 Resume linked successfully. Ready for context analysis.
+               </div>
+             )}
           </div>
         </div>
 
@@ -348,7 +364,7 @@ function PermissionStep({ icon: Icon, label, state, isOptional }: PermissionStep
   );
 }
 
-// --- HELPERS (Exported) ---
+// --- HELPERS ---
 
 export function labelForRound(roundId: string) {
   if (roundId?.includes("technical")) return "Technical Deep Dive";
