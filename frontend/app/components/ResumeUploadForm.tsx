@@ -8,6 +8,7 @@ export function ResumeUploadForm() {
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -31,7 +32,7 @@ export function ResumeUploadForm() {
     try {
       setUploadState("uploading");
       const response = await fetch(
-        "https://interviewer-wmk1.onrender.com/resume/upload-resume",
+        `${backendUrl}/resume/upload-resume`,
         {
           method: "POST",
           body: formData,
