@@ -1,9 +1,15 @@
+# main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+
+# Database init
 from app.db.database import create_tables
+
+# Import Routes
 from app.routes.resume_routes import router as resume_router
 from app.routes.interview_routes import router as interview_router
+from app.routes.websocket_routes import router as websocket_router # <--- New Import
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -25,8 +31,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Register Routes
 app.include_router(resume_router, prefix="/api/resume", tags=["Resume Parsing"])
 app.include_router(interview_router, prefix="/api/interview", tags=["Interview"])
+app.include_router(websocket_router, tags=["WebSockets"]) # <--- No prefix needed for WS usually
 
 @app.get("/")
 def read_root():
