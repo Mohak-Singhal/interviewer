@@ -6,3 +6,6 @@ PyMuPDF
 httpx
 fastapi
 python-multipart
+aiortc
+deepgram-sdk
+numpy

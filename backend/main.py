@@ -10,6 +10,7 @@ from app.db.database import create_tables
 from app.routes.resume_routes import router as resume_router
 from app.routes.interview_routes import router as interview_router
 from app.routes.websocket_routes import router as websocket_router # <--- New Import
+from app.routes.test_routes import router as test_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -34,7 +35,8 @@ app.add_middleware(
 # Register Routes
 app.include_router(resume_router, prefix="/api/resume", tags=["Resume Parsing"])
 app.include_router(interview_router, prefix="/api/interview", tags=["Interview"])
-app.include_router(websocket_router, tags=["WebSockets"]) # <--- No prefix needed for WS usually
+app.include_router(websocket_router, tags=["WebSockets"]) 
+app.include_router(test_router, prefix="/api/test", tags=["Debug"])
 
 @app.get("/")
 def read_root():
