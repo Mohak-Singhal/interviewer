@@ -9,3 +9,4 @@ python-multipart
 aiortc
 deepgram-sdk
 numpy
+groq
